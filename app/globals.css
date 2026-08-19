@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — "Clipwell": a utility tool, not a media brand.
+   Palette: paper (#FAFAF8), ink (#171412), signal amber (#E8A33D) for
+   active/processing states, line (#DEDAD2) for hairline dividers.
+   Type: Instrument Serif-style display isn't right for a tool — instead a
+   clean grotesk for UI, and a monospace for technical/status readouts
+   (job ids, byte sizes, states) since that's where this product's
+   personality actually lives: it shows its work. */
+
+:root {
+  --paper: #fafaf8;
+  --ink: #171412;
+  --ink-soft: #57534a;
+  --line: #dedad2;
+  --signal: #e8a33d;
+  --signal-soft: #fbe8c8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.font-mono-status {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
