@@ -35,6 +35,7 @@ const worker = new Worker<ProcessingJobData, ProcessingJobResult>(
 
     let ingestedPath: string | null = null;
     let outputPath: string | null = null;
+    let thumbnailPath: string | null = null;
 
     try {
       await job.updateProgress(10);
@@ -44,9 +45,14 @@ const worker = new Worker<ProcessingJobData, ProcessingJobResult>(
 
       const transcodeResult = await transcode(ingested.localPath, source);
       outputPath = transcodeResult.outputPath;
+      thumbnailPath = transcodeResult.thumbnailPath ?? null;
       await job.updateProgress(80);
 
       const { downloadUrl } = await uploadToTempStorage(outputPath, requestId);
+      let thumbnailUrl: string | undefined;
+      if (thumbnailPath) {
+        thumbnailUrl = (await uploadToTempStorage(thumbnailPath, `${requestId}-thumb`)).downloadUrl;
+      }
       await job.updateProgress(100);
 
       metrics.incr("job_completed", { adapter: adapter.id });
@@ -60,6 +66,7 @@ const worker = new Worker<ProcessingJobData, ProcessingJobResult>(
         sizeBytes: transcodeResult.sizeBytes,
         durationSeconds: transcodeResult.durationSeconds,
         format: source.targetFormat,
+        thumbnailUrl,
       };
     } catch (err) {
       metrics.incr("job_failed", { adapter: adapter.id });
@@ -71,7 +78,7 @@ const worker = new Worker<ProcessingJobData, ProcessingJobResult>(
       });
       throw err;
     } finally {
-      for (const p of [ingestedPath, outputPath]) {
+      for (const p of [ingestedPath, outputPath, thumbnailPath]) {
         if (p) await fs.unlink(p).catch(() => {});
       }
     }
