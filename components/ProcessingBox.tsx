@@ -10,6 +10,7 @@ interface JobState {
   jobId?: string;
   errorMessage?: string;
   downloadUrl?: string;
+  thumbnailUrl?: string;
 }
 
 export function ProcessingBox() {
@@ -56,99 +57,24 @@ export function ProcessingBox() {
     pollStatus(jobId);
   }
 
-  async function pollStatus(jobId: string) {
-    const interval = setInterval(async () => {
-      const res = await fetch(`/api/jobs/${jobId}`);
-      if (!res.ok) return;
-      const status = await res.json();
+  async function handleFileSelected(file: File) {
+    setMode("upload");
+    setJob({ phase: "detecting" });
 
-      if (status.state === "completed") {
-        clearInterval(interval);
-        setJob({ phase: "complete", jobId, downloadUrl: status.result?.downloadUrl });
-      } else if (status.state === "failed") {
-        clearInterval(interval);
-        setJob({ phase: "error", errorMessage: status.failedReason ?? "Processing failed." });
-      } else {
-        setJob((prev) => ({ ...prev, phase: "processing" }));
-      }
-    }, 1500);
-  }
+    const form = new FormData();
+    form.append("file", file);
 
-  return (
-    <div className="w-full max-w-xl">
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-white px-4 py-3 shadow-sm focus-within:border-[var(--ink)] transition-colors">
-        <input
-          type="text"
-          inputMode="url"
-          value={url}
-          onChange={(e) => {
-            setUrl(e.target.value);
-            detectMode(e.target.value);
-          }}
-          placeholder="Paste a URL you have rights to, or upload a file below"
-          aria-label="Media URL"
-          className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-[var(--ink-soft)]"
-        />
-        {mode && (
-          <span className="font-mono-status text-xs text-[var(--ink-soft)] shrink-0">
-            direct URL
-          </span>
-        )}
-      </div>
+    const uploadRes = await fetch("/api/uploads", { method: "POST", body: form });
+    if (!uploadRes.ok) {
+      const body = await uploadRes.json().catch(() => ({}));
+      setJob({
+        phase: "error",
+        errorMessage: body.message ?? "Upload failed. Please try a different file.",
+      });
+      return;
+    }
+    const { uploadRef } = await uploadRes.json();
 
-      <div className="mt-3 flex items-center gap-3">
-        <button
-          onClick={handleSubmit}
-          disabled={!url.trim() || job.phase === "detecting" || job.phase === "queued" || job.phase === "processing"}
-          className="rounded-md bg-[var(--ink)] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Process
-        </button>
-        <span className="text-sm text-[var(--ink-soft)]">or</span>
-        <label className="text-sm font-medium underline decoration-[var(--line)] underline-offset-4 cursor-pointer">
-          Upload a file
-          <input type="file" className="sr-only" onChange={() => setMode("upload")} />
-        </label>
-      </div>
-
-      <JobStatusPanel job={job} />
-    </div>
-  );
-}
-
-function JobStatusPanel({ job }: { job: JobState }) {
-  if (job.phase === "idle") return null;
-
-  if (job.phase === "error") {
-    return (
-      <div role="status" className="mt-4 rounded-md border border-[var(--line)] bg-[#FBF5EE] p-4 text-sm">
-        <p className="font-medium">Can't process this yet</p>
-        <p className="mt-1 text-[var(--ink-soft)]">{job.errorMessage}</p>
-      </div>
-    );
-  }
-
-  if (job.phase === "complete" && job.downloadUrl) {
-    return (
-      <div role="status" className="mt-4 rounded-md border border-[var(--line)] bg-white p-4 text-sm">
-        <p className="font-medium">Ready</p>
-        <a
-          href={job.downloadUrl}
-          className="mt-2 inline-block rounded-md bg-[var(--ink)] px-4 py-2 text-white text-sm font-medium"
-        >
-          Download
-        </a>
-      </div>
-    );
-  }
-
-  return (
-    <div role="status" aria-live="polite" className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-soft)]">
-      <span
-        className="h-2 w-2 rounded-full bg-[var(--signal)] animate-pulse"
-        aria-hidden="true"
-      />
-      <span className="font-mono-status">
-        {job.phase === "detecting" && "checking authorization…"}
-        {job.phase === "queued" && "queued…"}
-        {job.phase === "processing" && "processing…"}
+    const jobRes = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type
