@@ -18,8 +18,9 @@ const JobRequestSchema = z.object({
   url: z.string().url().max(2048).optional(),
   platform: z.enum(["youtube", "tiktok", "instagram", "facebook"]).optional(),
   ownMediaId: z.string().max(200).optional(),
-  targetFormat: z.enum(["mp4", "mp3", "webm", "m4a"]),
+  targetFormat: z.enum(["mp4", "mp3", "webm", "m4a", "mov"]),
   targetQuality: z.enum(["source", "1080p", "720p", "480p", "audio-only"]).optional(),
+  generateThumbnail: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
