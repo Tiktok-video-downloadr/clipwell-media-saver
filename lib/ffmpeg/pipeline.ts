@@ -155,4 +155,4 @@ function runCapture(cmd: string, args: string[]): Promise<string> {
       else reject(new Error(`${cmd} exited ${code}`));
     });
   });
-  }
+}
