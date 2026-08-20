@@ -18,6 +18,7 @@ export interface ProcessingJobResult {
   sizeBytes: number;
   durationSeconds?: number;
   format: string;
+  thumbnailUrl?: string;
 }
 
 export const PROCESSING_QUEUE_NAME = "media-processing";
