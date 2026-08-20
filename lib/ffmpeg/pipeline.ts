@@ -12,11 +12,12 @@ export interface TranscodeResult {
   outputPath: string;
   sizeBytes: number;
   durationSeconds: number;
+  thumbnailPath?: string;
 }
 
 export async function transcode(
   inputPath: string,
-  target: Pick<MediaSourceRequest, "targetFormat" | "targetQuality">
+  target: Pick<MediaSourceRequest, "targetFormat" | "targetQuality" | "generateThumbnail">
 ): Promise<TranscodeResult> {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
@@ -34,7 +35,25 @@ export async function transcode(
   await runWithTimeout("ffmpeg", args, FFMPEG_TIMEOUT_MS);
 
   const stat = await fs.stat(outputPath);
-  return { outputPath, sizeBytes: stat.size, durationSeconds };
+
+  let thumbnailPath: string | undefined;
+  const isAudioOnly = target.targetFormat === "mp3" || target.targetFormat === "m4a";
+  if (target.generateThumbnail && !isAudioOnly) {
+    thumbnailPath = await generateThumbnail(inputPath, durationSeconds);
+  }
+
+  return { outputPath, sizeBytes: stat.size, durationSeconds, thumbnailPath };
+}
+
+async function generateThumbnail(inputPath: string, durationSeconds: number): Promise<string> {
+  const thumbnailPath = path.join(OUTPUT_DIR, `${randomUUID()}.jpg`);
+  const seekSeconds = Math.min(Math.max(durationSeconds * 0.1, 0), Math.max(durationSeconds - 1, 0));
+  await runWithTimeout(
+    "ffmpeg",
+    ["-y", "-ss", String(seekSeconds), "-i", inputPath, "-frames:v", "1", "-q:v", "3", thumbnailPath],
+    30_000
+  );
+  return thumbnailPath;
 }
 
 export class ProcessingError extends Error {
@@ -54,7 +73,9 @@ function buildFfmpegArgs(
   if (target.targetFormat === "mp3" || target.targetFormat === "m4a") {
     args.push("-vn", "-acodec", target.targetFormat === "mp3" ? "libmp3lame" : "aac", "-b:a", "192k");
   } else {
-    args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "128k");
+    const videoCodec = target.targetFormat === "webm" ? "libvpx-vp9" : "libx264";
+    const audioCodec = target.targetFormat === "webm" ? "libopus" : "aac";
+    args.push("-c:v", videoCodec, "-preset", "veryfast", "-crf", "23", "-c:a", audioCodec, "-b:a", "128k");
 
     const scale = resolutionFilter(target.targetQuality);
     if (scale) args.push("-vf", scale);
@@ -79,7 +100,7 @@ function resolutionFilter(quality?: string): string | null {
 }
 
 function extFor(format: MediaSourceRequest["targetFormat"]): string {
-  return { mp4: ".mp4", webm: ".webm", mp3: ".mp3", m4a: ".m4a" }[format];
+  return { mp4: ".mp4", webm: ".webm", mp3: ".mp3", m4a: ".m4a", mov: ".mov" }[format];
 }
 
 async function probeDuration(inputPath: string): Promise<number> {
@@ -134,4 +155,4 @@ function runCapture(cmd: string, args: string[]): Promise<string> {
       else reject(new Error(`${cmd} exited ${code}`));
     });
   });
-}
+  }
