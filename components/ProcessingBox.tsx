@@ -181,7 +181,6 @@ function JobStatusPanel({ job }: { job: JobState }) {
     return (
       <div role="status" className="mt-4 rounded-md border border-[var(--line)] bg-white p-4 text-sm">
         {job.thumbnailUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived local URL, not worth next/image's remote-pattern config for this
           <img
             src={job.thumbnailUrl}
             alt=""
