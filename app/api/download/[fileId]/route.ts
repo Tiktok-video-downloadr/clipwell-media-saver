@@ -5,16 +5,17 @@ import { verifySignedDownload, resolveDeliveryPath } from "@/lib/storage/tempSto
 import { trackFunnelEvent } from "@/lib/observability/metrics";
 import { logger } from "@/lib/observability/logger";
 
-export async function GET(req: NextRequest, { params }: { params: { fileId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ fileId: string }> }) {
+  const { fileId } = await params;
   const url = new URL(req.url);
   const exp = url.searchParams.get("exp");
   const sig = url.searchParams.get("sig");
 
-  if (!exp || !sig || !verifySignedDownload(params.fileId, exp, sig)) {
+  if (!exp || !sig || !verifySignedDownload(fileId, exp, sig)) {
     return NextResponse.json({ error: "LINK_EXPIRED_OR_INVALID" }, { status: 403 });
   }
 
-  const filePath = resolveDeliveryPath(params.fileId);
+  const filePath = resolveDeliveryPath(fileId);
 
   let stat;
   try {
@@ -23,8 +24,8 @@ export async function GET(req: NextRequest, { params }: { params: { fileId: stri
     return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   }
 
-  trackFunnelEvent("download_started", { fileId: params.fileId });
-  logger.info("download served", { fileId: params.fileId, sizeBytes: stat.size });
+  trackFunnelEvent("download_started", { fileId });
+  logger.info("download served", { fileId, sizeBytes: stat.size });
 
   const stream = createReadStream(filePath);
   const webStream = new ReadableStream({
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest, { params }: { params: { fileId: stri
       stream.on("data", (chunk) => controller.enqueue(chunk));
       stream.on("end", () => {
         controller.close();
-        trackFunnelEvent("download_completed", { fileId: params.fileId });
+        trackFunnelEvent("download_completed", { fileId });
       });
       stream.on("error", (err) => controller.error(err));
     },
