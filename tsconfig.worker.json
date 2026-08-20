@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "outDir": "dist/workers",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "strict": true,
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["workers/**/*.ts", "lib/**/*.ts"],
+  "exclude": ["node_modules", "app", ".next"]
+}
