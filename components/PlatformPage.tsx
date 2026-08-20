@@ -9,8 +9,53 @@ interface PlatformPageProps {
 }
 
 export function PlatformPage({ platform, connectHref, supported, notSupported, faq }: PlatformPageProps) {
+  const softwareAppSchema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: `Clipwell ${platform} export`,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Any (web-based)",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "/" },
+      { "@type": "ListItem", position: 2, name: `${platform} export`, item: connectHref.replace("/api/oauth", "").replace("/start", "") },
+    ],
+  };
+
+  const faqSchema =
+    faq.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faq.map(({ q, a }) => ({
+            "@type": "Question",
+            name: q,
+            acceptedAnswer: { "@type": "Answer", text: a },
+          })),
+        }
+      : null;
+
   return (
     <main id="main" className="mx-auto max-w-2xl px-4 pt-16 pb-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
       <nav aria-label="Breadcrumb" className="text-xs text-[var(--ink-soft)]">
         <Link href="/">Home</Link> <span aria-hidden="true">/</span> {platform}
       </nav>
