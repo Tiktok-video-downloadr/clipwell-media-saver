@@ -94,4 +94,66 @@ export const directUrlAdapter: IngestionAdapter = {
       (async function* () {
         for await (const chunk of res.body as any) {
           bytesWritten += chunk.length;
-          if (bytesWritten > MAX_DOWNLO
+          if (bytesWritten > MAX_DOWNLOAD_BYTES) {
+            throw new Error("Download exceeded maximum allowed size");
+          }
+          yield chunk;
+        }
+      })()
+    );
+
+    await pipeline(capped, createWriteStream(localPath));
+
+    return {
+      localPath,
+      sizeBytes: bytesWritten,
+      mimeType: res.headers.get("content-type") ?? "application/octet-stream",
+      sourceDescription: `Direct URL (request ${ctx.requestId}): ${parsed.hostname}`,
+    };
+  },
+
+  async healthCheck(): Promise<AdapterHealth> {
+    return {
+      id: "direct-url",
+      healthy: true,
+      successRate: 1,
+      averageLatencyMs: 0,
+      lastCheckedAt: new Date().toISOString(),
+    };
+  },
+};
+
+const MAX_REDIRECTS = 5;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  let currentUrl = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(currentUrl, { ...init, signal: controller.signal, redirect: "manual" });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+      const nextUrl = new URL(res.headers.get("location")!, currentUrl).toString();
+      await assertSafeToFetch(nextUrl);
+      currentUrl = nextUrl;
+      continue;
+    }
+
+    return res;
+  }
+  throw new Error("Too many redirects");
+}
+
+function guessExtFromContentType(contentType: string | null): string {
+  if (!contentType) return ".bin";
+  if (contentType.includes("mp4")) return ".mp4";
+  if (contentType.includes("webm")) return ".webm";
+  if (contentType.includes("quicktime")) return ".mov";
+  if (contentType.includes("mpeg")) return ".mp3";
+  return ".bin";
+}
