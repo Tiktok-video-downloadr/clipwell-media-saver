@@ -34,8 +34,9 @@ export interface MediaSourceRequest {
   url?: string;
   platform?: PlatformId;
   ownMediaId?: string;
-  targetFormat: "mp4" | "mp3" | "webm" | "m4a";
+  targetFormat: "mp4" | "mp3" | "webm" | "m4a" | "mov";
   targetQuality?: "source" | "1080p" | "720p" | "480p" | "audio-only";
+  generateThumbnail?: boolean;
 }
 
 export type RejectionReason =
