@@ -14,7 +14,7 @@ import type {
   RequestContext,
 } from "../types";
 
-const MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+const MAX_DOWNLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 30_000;
 const STAGING_DIR = process.env.DIRECT_URL_STAGING_DIR ?? "/tmp/media-platform/direct-url";
 
@@ -90,7 +90,7 @@ export const directUrlAdapter: IngestionAdapter = {
     const localPath = path.join(STAGING_DIR, `${randomUUID()}${ext}`);
 
     let bytesWritten = 0;
-    const capped = new Readable.from(
+    const capped = Readable.from(
       (async function* () {
         for await (const chunk of res.body as any) {
           bytesWritten += chunk.length;
