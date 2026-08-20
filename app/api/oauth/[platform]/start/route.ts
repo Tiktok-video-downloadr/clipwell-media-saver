@@ -5,8 +5,9 @@ import type { PlatformId } from "@/lib/ingestion/types";
 
 const VALID_PLATFORMS: PlatformId[] = ["youtube", "tiktok", "instagram", "facebook"];
 
-export async function GET(req: NextRequest, { params }: { params: { platform: string } }) {
-  const platform = params.platform as PlatformId;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ platform: string }> }) {
+  const { platform: platformParam } = await params;
+  const platform = platformParam as PlatformId;
 
   if (!VALID_PLATFORMS.includes(platform)) {
     return NextResponse.json({ error: "UNKNOWN_PLATFORM" }, { status: 404 });
